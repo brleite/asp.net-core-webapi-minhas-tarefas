@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MinhasTarefasAPI.Database;
+using MinhasTarefasAPI.Models;
 using MinhasTarefasAPI.Repositories;
 using MinhasTarefasAPI.Repositories.Contracts;
 
@@ -29,7 +30,16 @@ namespace MinhasTarefasAPI
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+            // Suprime validações do ApiController
+            services.Configure<ApiBehaviorOptions>(op =>
+            {
+                op.SuppressModelStateInvalidFilter = true;
+            });
+            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2)
+                // Evita loop no Json com entidades que se referenciam mutuamente
+                    .AddJsonOptions(
+                        options => options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore
+                    );
 
             services.AddDbContext<MinhasTarefasContext>(options =>
                 options.UseMySql(Configuration.GetConnectionString("MinhasTarefasContext"), builder =>
@@ -37,6 +47,8 @@ namespace MinhasTarefasAPI
 
             services.AddScoped<IUsuarioRepository, UsuarioRepository>();
             services.AddScoped<ITarefaRepository, TarefaRepository>();
+
+            services.AddDefaultIdentity<ApplicationUser>().AddEntityFrameworkStores<MinhasTarefasContext>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline. 
@@ -52,6 +64,8 @@ namespace MinhasTarefasAPI
                 app.UseHsts();
             }
 
+            app.UseStatusCodePages();
+            app.UseAuthentication();
             app.UseHttpsRedirection();
             app.UseMvc();
         }

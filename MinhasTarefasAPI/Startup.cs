@@ -12,6 +12,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MinhasTarefasAPI.Database;
+using MinhasTarefasAPI.Repositories;
+using MinhasTarefasAPI.Repositories.Contracts;
 
 namespace MinhasTarefasAPI
 {
@@ -32,6 +34,9 @@ namespace MinhasTarefasAPI
             services.AddDbContext<MinhasTarefasContext>(options =>
                 options.UseMySql(Configuration.GetConnectionString("MinhasTarefasContext"), builder =>
                     builder.MigrationsAssembly("MinhasTarefasAPI")));
+
+            services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+            services.AddScoped<ITarefaRepository, TarefaRepository>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline. 

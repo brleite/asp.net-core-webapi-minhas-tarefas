@@ -6,6 +6,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Migrations\20200804135513_BancoInicial.cs" />
+    <Compile Remove="Migrations\20200804135513_BancoInicial.Designer.cs" />
+    <Compile Remove="Migrations\20200804155230_TarefaSicronizacao.cs" />
+    <Compile Remove="Migrations\20200804155230_TarefaSicronizacao.Designer.cs" />
+    <Compile Remove="Migrations\20200805111126_init.cs" />
+    <Compile Remove="Migrations\20200805111126_init.Designer.cs" />
+    <Compile Remove="Migrations\20200805124937_Token.cs" />
+    <Compile Remove="Migrations\20200805124937_Token.Designer.cs" />
+    <Compile Remove="Migrations\20200805130156_fktoken.cs" />
+    <Compile Remove="Migrations\20200805130156_fktoken.Designer.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.AspNetCore.Razor.Design" Version="2.2.0" PrivateAssets="All" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="2.2.3" />

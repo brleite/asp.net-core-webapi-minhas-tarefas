@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,16 +11,20 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.PlatformAbstractions;
 using Microsoft.IdentityModel.Tokens;
 using MinhasTarefasAPI.Database;
-using MinhasTarefasAPI.Models;
-using MinhasTarefasAPI.Repositories;
-using MinhasTarefasAPI.Repositories.Contracts;
+using MinhasTarefasAPI.V1.Helpers.Swagger;
+using MinhasTarefasAPI.V1.Models;
+using MinhasTarefasAPI.V1.Repositories;
+using MinhasTarefasAPI.V1.Repositories.Contracts;
+using Swashbuckle.AspNetCore.Swagger;
 
 namespace MinhasTarefasAPI
 {
@@ -40,11 +45,73 @@ namespace MinhasTarefasAPI
             {
                 op.SuppressModelStateInvalidFilter = true;
             });
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2)
-                // Evita loop no Json com entidades que se referenciam mutuamente
-                    .AddJsonOptions(
-                        options => options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore
-                    );
+            
+            services.AddMvc(config => {
+                config.ReturnHttpNotAcceptable = true;
+                config.InputFormatters.Add(new XmlSerializerInputFormatter(config));
+                config.OutputFormatters.Add(new XmlSerializerOutputFormatter());
+            })
+            .SetCompatibilityVersion(CompatibilityVersion.Version_2_2)
+            // Evita loop no Json com entidades que se referenciam mutuamente
+            .AddJsonOptions(
+                options => options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore
+            );
+
+            services.AddApiVersioning(cfg => {
+                cfg.ReportApiVersions = true;
+
+                //cfg.ApiVersionReader = new HeaderApiVersionReader("api-version");
+                cfg.AssumeDefaultVersionWhenUnspecified = true;
+                cfg.DefaultApiVersion = new Microsoft.AspNetCore.Mvc.ApiVersion(1, 0);
+            });
+
+            services.AddSwaggerGen(cfg => {
+                cfg.AddSecurityDefinition("Bearer", new ApiKeyScheme()
+                {
+                    In = "header",
+                    Type = "apiKey",
+                    Description = "Adicione o JSON Web Token(JWT) para autenticar.",
+                    Name = "Authorization"
+                });
+
+                var security = new Dictionary<string, IEnumerable<string>>() {
+                    { "Bearer", new string[] { } }
+                };
+                cfg.AddSecurityRequirement(security);
+
+                cfg.ResolveConflictingActions(apiDescription => apiDescription.First());
+                cfg.SwaggerDoc("v1.0", new Swashbuckle.AspNetCore.Swagger.Info()
+                {
+                    Title = "MinhasTarefas API - V1.0",
+                    Version = "v1.0"
+                });
+
+                var CaminhoProjeto = PlatformServices.Default.Application.ApplicationBasePath; ;
+                var NomeProjeto = $"{PlatformServices.Default.Application.ApplicationName}.xml";
+                var CaminhoArquivoXMLComentario = Path.Combine(CaminhoProjeto, NomeProjeto);
+
+                cfg.IncludeXmlComments(CaminhoArquivoXMLComentario);
+
+
+
+                cfg.DocInclusionPredicate((docName, apiDesc) =>
+                {
+                    var actionApiVersionModel = apiDesc.ActionDescriptor?.GetApiVersion();
+                    // would mean this action is unversioned and should be included everywhere
+                    if (actionApiVersionModel == null)
+                    {
+                        return true;
+                    }
+                    if (actionApiVersionModel.DeclaredApiVersions.Any())
+                    {
+                        return actionApiVersionModel.DeclaredApiVersions.Any(v => $"v{v.ToString()}" == docName);
+                    }
+                    return actionApiVersionModel.ImplementedApiVersions.Any(v => $"v{v.ToString()}" == docName);
+                });
+
+                cfg.OperationFilter<ApiVersionOperationFilter>();
+
+            });
 
             services.AddDbContext<MinhasTarefasContext>(options =>
                 options.UseMySql(Configuration.GetConnectionString("MinhasTarefasContext"), builder =>
@@ -115,6 +182,12 @@ namespace MinhasTarefasAPI
             app.UseAuthentication();
             app.UseHttpsRedirection();
             app.UseMvc();
+
+            app.UseSwagger(); // /swagger/v1/swagger.json
+            app.UseSwaggerUI(cfg => {
+                cfg.SwaggerEndpoint("/swagger/v1.0/swagger.json", "Minhas Tarefas API - V1.0");
+                // cfg.RoutePrefix = String.Empty;
+            });
         }
     }
 }
